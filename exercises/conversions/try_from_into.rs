@@ -2,7 +2,7 @@
 // Basically, this is the same as From. The main difference is that this should return a Result type
 // instead of the target type itself.
 // You can read more about it at https://doc.rust-lang.org/std/convert/trait.TryFrom.html
-use std::convert::{TryInto, TryFrom};
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Debug)]
 struct Color {
@@ -11,7 +11,6 @@ struct Color {
     blue: u8,
 }
 
-// I AM NOT DONE
 
 // Your task is to complete this implementation
 // and return an Ok result of inner type Color.
@@ -22,10 +21,25 @@ struct Color {
 // but slice implementation need check slice length!
 // Also note, that chunk of correct rgb color must be integer in range 0..=255.
 
+// I was trying to make use of iterator and destructuring to abstract `valid_u8` and simplify
+// the code. But as it turns out, the result is quite awful.
+// There is definitely some way to make the code much cleaner.
+
+fn valid_u8(x: i16) -> Result<u8, String> {
+    match x {
+        0..=255 => Ok(x as u8),
+        _ => Err(String::from("out of range")),
+    }
+}
+
 // Tuple implementation
 impl TryFrom<(i16, i16, i16)> for Color {
     type Error = String;
     fn try_from(tuple: (i16, i16, i16)) -> Result<Self, Self::Error> {
+        match (valid_u8(tuple.0), valid_u8(tuple.1), valid_u8(tuple.2)) {
+            (Ok(red), Ok(green), Ok(blue)) => Ok(Color { red, green, blue }),
+            (Err(err), _, _) | (_, Err(err), _) | (_, _, Err(err)) => Err(err),
+        }
     }
 }
 
@@ -33,6 +47,23 @@ impl TryFrom<(i16, i16, i16)> for Color {
 impl TryFrom<[i16; 3]> for Color {
     type Error = String;
     fn try_from(arr: [i16; 3]) -> Result<Self, Self::Error> {
+        match arr
+            .into_iter()
+            .map(|x| match x {
+                0..=255 => Ok(*x as u8),
+                _ => Err(String::from("out of range")),
+            })
+            .collect::<Result<Vec<u8>, Self::Error>>()
+        {
+            Ok(vec) => {
+                if let [red, green, blue] = vec[..] {
+                    Ok(Color { red, green, blue })
+                } else {
+                    panic!("extra component");
+                }
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 
@@ -40,6 +71,23 @@ impl TryFrom<[i16; 3]> for Color {
 impl TryFrom<&[i16]> for Color {
     type Error = String;
     fn try_from(slice: &[i16]) -> Result<Self, Self::Error> {
+        match slice
+            .into_iter()
+            .map(|x| match x {
+                0..=255 => Ok(*x as u8),
+                _ => Err(String::from("out of range")),
+            })
+            .collect::<Result<Vec<u8>, Self::Error>>()
+        {
+            Ok(vec) => {
+                if let [red, green, blue] = vec[..] {
+                    Ok(Color { red, green, blue })
+                } else {
+                    panic!("extra component");
+                }
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 
